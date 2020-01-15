@@ -1,0 +1,18 @@
+{
+  "name": "nodeantakshri",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "author": "Amita",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "mongoose": "^4.13.20",
+    "nodemon": "^2.0.2",
+    "uid": "0.0.2"
+  }
+}
