@@ -1,147 +1,217 @@
-const express = require('express');
+const express = require("express");
 const app = express();
-const mongoose = require('mongoose');
-let SongI = require('./models/songs');
+const mongoose = require("mongoose");
+let SongI = require("./models/songs");
 //const logic = require('./logic');
-const port = process.env.PORT||4100;
-const SongU = require('./models/usongs');
-
+const port = process.env.PORT || 3000;
+const SongU = require("./models/usongs");
+const morgan = require("morgan");
+app.use(morgan("combined"));
+const sanscript = require("@sanskrit-coders/sanscript");
 
 app.use(express.json());
 
-mongoose.connect('mongodb://localhost/songs',{useNewUrlParser:true})
-.then(() =>console.log('connection successful'))
-.catch((err)=>console.log('Something went wrong',err.message));
+mongoose
+  .connect("mongodb://localhost/songs", { useNewUrlParser: true })
+  .then(() => console.log("connection successful"))
+  .catch(err => console.log("Something went wrong", err.message));
 
-app.post('/songs',async(req,res) =>{
-    try{
-        
-      let uSong =await SongI.Songs.findOne({identifier:req.body.identifier});
-      if(uSong)
-      {
-
-          uSong.Song=req.body.Song;
-          let data = await uSong.save();
-          return res.status(200).send({message:'Data updated'}) 
-        }
-else{
-    let song =  SongI.Songs({
-        title:req.body.title,
-        firstword:req.body.firstword,
-        lastword:req.body.lastword,
-        identifier:req.body.identifier,
-        lastUpdated:req.body.lastUpdated,
-        Song:req.body.Song
-  })
-  let data = await song.save();
-        res.send(data);
-}      
-    
-}
- catch(err){
- console.log(err.message);
-        }
-        });
-
-
-
-
-//gET REQUEST
-const letterFilter = new Set(['ँ','ं','ः','़','ा','ि','ी','ु','ू','ृ','ॅ','े','ै','ॉ','ो','ौ','्','ा','े','ी','ं','्','ो','ै','ु','ू','़','ँ','ॉ','ृ','ः','ॅ']);
-
-const getFirstLetterFromWord  = function (str) {
-// Start from the end of the string.
-for(let i = 0 ; i <= str.length - 1; i--) {
-
-// If the letter is not in the filter list, then we have our last character.
-if (!letterFilter.has(str.charAt(i))) {
-return str.charAt(i);
-}
-// Let's consider the previous character in next iteration
-}
-// We reached the end of the string and found no valid character.
-return false;
+//Extraction of firstLetter and lastLetter
+const getLastLetterFromWord = function(str) {
+  // Start from the end of the string.
+  for (let i = str.length - 1; i >= 0; i--) {
+    // If the letter is not in the filter list, then we have our last character.
+    if (!letterFilter.has(str.charAt(i))) {
+      return str.charAt(i);
+    }
+    // Let's consider the previous character in next iteration
+  }
+  // We reached the end of the string and found no valid character.
+  return false;
 };
+const getFirstLetterFromWordTrans = function(str) {
+  return str.charAt(0);
+}
+//console.log(transliterateFirst("Amita"))
+//console.log(transliterateLast("jethani"))
 
-// Print the output.
-// console.log("हिंदी starts with " + getFirstLetterFromWord('हिंदी'));
-// console.log("हमको तुमसे प्यार है starts with " + getFirstLetterFromWord('हमको तुमसे प्यार है'));
-// console.log("मेरे सपनों की रानी starts with " + getFirstLetterFromWord('मेरे सपनों की रानी'));
-// console.log("कभी कभी मेरे दिल में खयाल आता है starts with " + getFirstLetterFromWord('कभी कभी मेरे दिल में खयाल आता है'));
-// console.log("एक तोह कम ज़िंदग… उस से भी कम है जवानी starts with " + getFirstLetterFromWord('एक तोह कम ज़िंदग… उस से भी कम है जवानी'));
+ const transliterateFirst = function(str) {
+	     let output = str + " - ";
+	     let hindiWord = sanscript.t(str.toLowerCase().trim(), "itrans", "devanagari", { syncope: true });
+	     return getFirstLetterFromWordTrans(hindiWord);
+	   };
+  
+  const transliterateLast = function(str) {
+	      let output = str + " - ";
+	      let hindiWord = sanscript.t(str.toLowerCase().trim(), "itrans", "devanagari", { syncope: true });
+	      return getLastLetterFromWord(hindiWord);
+	    };
 
+app.post("/songs", async (req, res) => {
+  try {
+    let songs = req.body.data;
+    console.log("Data from body as object" + JSON.stringify(songs));
+    songs.forEach(async element => {
+      let JSONdata = element;
+      console.log("Entered forEach with current element as " + JSONdata);
+      let uSong = await SongI.Songs.findOne({
+        identifier: JSONdata.identifier
+      });
+      if (uSong) {
+        uSong.Song = JSONdata.Song;
+       uSong.lastUpdated =JSONdata.lastUpdated;
+	 await uSong.save();
+      } else {
+        let FL = JSONdata.firstword;
+        // console.log("FL :", transliterate(FL) );
+        let LL = JSONdata.lastword;
+        //console.log("LL :", transliterate(LL) );
 
-//var fw = getFirstLetterFromWord('ह');
-// console.log(fw);
-//already in a collection 
+        let song = await SongI.Songs({
+          title: JSONdata.title,
+          firstword: JSONdata.firstword,
+          lastword: JSONdata.lastword,
+          firstLetter: transliterateFirst(FL),
+          lastLetter: transliterateLast(LL),
+          identifier: JSONdata.identifier,
+          lastUpdated: JSONdata.lastUpdated,
+          Song: JSONdata.Song
+        });
+        console.log("song:" + song);
 
-
-
-app.get('/songs',async (req,res) =>{
-    var fl = req.query.first_word;
-    var id = req.query.user_id;
-    //return console.log({fl: fl, id: id});
-    let data = await SongI.Songs.find();
-    console.log("value of data " +data);
-            let Data = await getSongToSend(data, req, res)
-            let element = Data[0];
-            let userID = Data[1]
-            console.log("value of element " +element);
-            if(Data){
-            res.send({message:'Song is played',item:element});}
-           // else{res.status(402).send({message:'Song not found'});}
-            let elementReturnedSave = new SongU.uSongs({
-                title:element.title,
-                user_id : userID,
-                firstword:element.firstword,
-                lastword:element.lastword,
-                identifier:element.identifier,
-                lastUpdated:element.lastUpdated,
-                Song:element.Song
-            });
-            await elementReturnedSave.save();
-            // let elementRemovefromSong = await SongI.Songs.findOneAndRemove(element.identifier);
-
-            
+        await song.save();
+      }
+    });
+    res.status(200).send({ message: "Data saved successfully",status:"200" });
+  } catch (err) {
+    console.log(err.message);
+  }
 });
 
-async function getSongToSend(data, req, res){
-    return new Promise( (resolve, reject ) => {
-    data.forEach(async (element) =>  {
+//Logic
+const letterFilter = new Set(['ँ', 'ं', 'ः', '़', 'ा', 'ि', 'ी', 'ु', 'ू', 'ृ', 'ॅ', 'े', 'ै', 'ॉ', 'ो', 'ौ', '्', 'ा', 'े', 'ी', 'ं', '्', 'ो', 'ै', 'ु', 'ू', '़', 'ँ', 'ॉ', 'ृ', 'ः', 'ॅ']);
+
+const getFirstLetterFromWord = function(str) {
+  // Start from the end of the string.
+  for (let i = 0; i <= str.length - 1; i--) {
+    // If the letter is not in the filter list, then we have our last character.
+    if (!letterFilter.has(str.charAt(i))) {
+      return str.charAt(i);
+    }
+    // Let's consider the previous character in next iteration
+  }
+  // We reached the end of the string and found no valid character.
+  return false;
+};
+
+//Get request
+
+app.get("/songs", async (req, res) => {
+  var fl = req.query.first_word;
+  var id = req.query.user_id;
+  let data = await SongI.Songs.find();
+//  console.log("value of data " + data);
+//	console.log("value of req in get"+req)
+   await getSongToSend(data, req, res).then(
+    async  (positive) =>{
+      console.log("value of positive " + positive);
+      let element = positive[0];
+      let userID = positive[1];
+   //  console.log("value of element " + element);
+      if (element) {
+        let elementReturnedSave = new SongU.uSongs({
+          title: element.title,
+          user_id: userID,
+          firstword: element.firstword,
+          lastword: element.lastword,
+          identifier: element.identifier,
+          lastUpdated: element.lastUpdated,
+          Song: element.Song
+        });
+     //   console.log("elementReturnedSave" + JSON.stringify(elementReturnedSave))
+      await elementReturnedSave.save().then(() =>{
+        return res.send({ message: "Song is played", status:true, code : 200, song:element});
+      }).catch(( )=>{
+        res.status(402).send({message:'Song not found',status:false, code : 402});
+      })
+      
+      }
+     
+    }
+      ).catch(negative => res.send(negative));
+  
+
+});
+
+ function getSongToSend(data, req, res) {
+  let served = false;
+  return new Promise((resolve, reject) => {
+    data.every(async (element) => {
+     // console.log("data.firstword " + element.firstword);
+      let firstLetterFromSong = element.firstLetter;
+      //console.log("value of params fl " + JSON.stringify(fl))
+      let valUefromParam = req.query.first_word;
+      console.log("valUefromParam" + valUefromParam);
+      
+	    console.log("firstLetterFromSong" + firstLetterFromSong);
+  //    if (firstLetterFromSong == valUefromParam) {
+        let ifSongServed = await  checkSongServed(element, req);
+     
+
+	      console.log("ifSongServed " + ifSongServed);
+	      if(ifSongServed == false){
+       if (firstLetterFromSong == valUefromParam){
+	    //  if (ifSongServed==false) {
+          //return element;
+        //  console.log("value of element " + element);
+          // return element
+       //   console.log("value of val " + element);
+        //	return false
+		served = true;
+		console.log("song found")
+        resolve([element, req.query.user_id]);
+		return false
+     //   throw "song found"
         
-            console.log("data.firstword " +element.firstword)
-            let firstLetterFromSong = getFirstLetterFromWord(element.firstword);
-            //console.log("value of params fl " + JSON.stringify(fl))
-            let valUefromParam = req.query.first_word;
-            console.log("valUefromParam" +valUefromParam);
-            console.log("firstLetterFromSong" +firstLetterFromSong);
-             if(firstLetterFromSong == valUefromParam)
-            {
-            let ifSongServed = await (checkSongServed(element, req))
-            console.log("ifSongServed "+ ifSongServed)
-            if(!ifSongServed){
-               //  return element;
-               console.log("value of element " +element);
-                // return element
-            console.log("value of val " + element)
-            resolve([element, req.query.user_id])
-             }else{
-                 console.log("else of Promise")
-                 res.send('Song Not found');
-             }
-        }
- });
- })}
+	}else{
+	
+	      
+        let indexOfElement = data.indexOf(element)
+        console.log("indexOfElementforSongAlreadyPlayed" +indexOfElement)
+        console.log("data length of matching" +data.length)
+        if(indexOfElement == (data.length)-1){
+          reject({message:'Song is already played for that user because of taraararararara',status:false,code:401})
+       		return false
+	} return true}
+      }else{
+	      
+        let indexOfElement = data.indexOf(element)
+        console.log("indexOfElement" +indexOfElement)
+        console.log("data length" +data.length)
+        if(indexOfElement == (data.length)-1){
+          reject({message:'Song is already played for that user',status:false,code:401})
+		return false
+        }return true
+      }
+    })
+ 
+       //reject([]);
+  });
+}
 
-    async function checkSongServed(element, req){
-        let id = element.identifier;
-        let songPlayed = await SongU.uSongs.findOne({$and :[{"identifier":id}, {"user_id": req.query.user_id}]});
-        console.log("value of song played "+ JSON.stringify(songPlayed))
-        if(songPlayed){
-        return true;
-        }
-        else {return false;}
-        }
+async function checkSongServed(element, req) {
+  let id = element.identifier;
+  let songPlayed = await  SongU.uSongs.findOne({
+    $and: [{ identifier: id }, { user_id: req.query.user_id }]
+  });
+//  console.log("value of song played " + JSON.stringify(songPlayed));
+  if (songPlayed) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
-   
-app.listen(port,() =>{console.log('Server connected')});
+app.listen(port, () => {
+  console.log("Server connected");
+});

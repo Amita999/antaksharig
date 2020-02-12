@@ -5,9 +5,7 @@ let uSongSchema = new mongoose.Schema({
 "firstword":{type:String,required:true},
 "lastword":{type:String,required:true},
 "identifier":{type: String, required:true},
-"lastUpdated":{type:Date,default:function(){
-    return Date.now();
-}},
+"lastUpdated":{type:String,required:true},
 "Song":{
 "link":{type:String,required:true},
 "clipBegin":{type:String,required:true},

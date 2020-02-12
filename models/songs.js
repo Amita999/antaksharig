@@ -4,9 +4,11 @@ let Schema = new mongoose.Schema({
 "title":{type:String,required:true},
 "firstword":{type:String,required:true},
 "lastword":{type:String,required:true},
+"firstLetter":{type:String},
+"lastLetter":{type:String},
 "identifier":{type: String, required:true},
-"lastUpdated":{type:Date,default:function(){
-    return Date.now();
+"lastUpdated":{type:Date,default: function(){
+	return Date.now();
 }},
 "Song":{
 "link":{type:String,required:true},
