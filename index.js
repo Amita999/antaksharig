@@ -180,7 +180,7 @@ app.get("/songs", async (req, res) => {
         console.log("indexOfElementforSongAlreadyPlayed" +indexOfElement)
         console.log("data length of matching" +data.length)
         if(indexOfElement == (data.length)-1){
-          reject({message:'Song is already played for that user because of taraararararara',status:false,code:401})
+          reject({message:'Song is already played for that user',status:false,code:401})
        		return false
 	} return true}
       }else{
